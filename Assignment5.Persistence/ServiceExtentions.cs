@@ -4,6 +4,7 @@ using Assignment5.Application.Services;
 using Assignment5.Domain.Models;
 using Assignment5.Persistence.Context;
 using Assignment5.Persistence.Repositories;
+using Assignment6.Application.Interfaces.IService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -61,8 +62,26 @@ namespace Assignment5.Persistence
                         ValidAudience = configuration["JWT:Audience"],
                         ValidateIssuerSigningKey = true,
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWT:SigningKey"])),
-
                     };
+
+                    options.Events = new JwtBearerEvents // Handler untuk menyimpan token di cookie
+                    {
+                        OnTokenValidated = context =>
+                        {
+                            return Task.CompletedTask;
+                        },
+                        OnAuthenticationFailed = context =>
+                        {
+                            context.Response.StatusCode = 401;
+                            return Task.CompletedTask;
+                        },
+                        OnMessageReceived = context =>
+                        {
+                            context.Token = context.Request.Cookies["AuthToken"];
+                            return Task.CompletedTask;
+                        }
+                    };
+
                 });
 
             return services;

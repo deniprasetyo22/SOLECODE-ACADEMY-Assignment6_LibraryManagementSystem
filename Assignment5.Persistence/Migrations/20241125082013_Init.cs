@@ -4,10 +4,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace Assignment5.Persistence.Migrations
+namespace Assignment6.Persistence.Migrations
 {
     /// <inheritdoc />
-    public partial class AddIdentify : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -31,6 +31,8 @@ namespace Assignment5.Persistence.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "text", nullable: false),
+                    RefreshToken = table.Column<string>(type: "text", nullable: true),
+                    RefreshTokenExpiryTime = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -49,6 +51,49 @@ namespace Assignment5.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Books",
+                columns: table => new
+                {
+                    bookId = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    category = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    ISBN = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    author = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    publisher = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    description = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    location = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    purchaseDate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    price = table.Column<double>(type: "double precision", nullable: false),
+                    totalBook = table.Column<int>(type: "integer", nullable: false),
+                    status = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    reason = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    language = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Books", x => x.bookId);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Users",
+                columns: table => new
+                {
+                    userId = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    firstName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    lastName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    position = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    privilage = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    libraryCardNumber = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    notes = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Users", x => x.userId);
                 });
 
             migrationBuilder.CreateTable(

@@ -1,6 +1,8 @@
 ﻿using Assignment5.Application.DTOs.Account;
 using Assignment5.Application.Interfaces.IService;
 using Assignment5.Domain.Models;
+using Assignment6.Application.Interfaces.IService;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -28,12 +30,15 @@ namespace Assignment5.Application.Services
             _configuration = configuration;
         }
         //Sign Up The User
-        public async Task<ResponseModel> SignUpAsync(RegisterModel model)
+        public async Task<AuthResponse> SignUpAsync(RegisterModel model)
         {
             var userExists = await _userManager.FindByNameAsync(model.Username);
-            if (userExists != null)
+            if (userExists != null) return new AuthResponse
+            {
+                Status = "Error",
+                Message = "User already exists!"
+            };
 
-                return new ResponseModel { Status = "Error", Message = "User already exists!" };
             AppUser user = new AppUser()
             {
                 Email = model.Email,
@@ -41,16 +46,28 @@ namespace Assignment5.Application.Services
                 UserName = model.Username
             };
             var result = await _userManager.CreateAsync(user, model.Password);
-            if (!result.Succeeded) return new ResponseModel
+            if (!result.Succeeded) return new AuthResponse
             {
                 Status = "Error",
                 Message = "User creation failed! Please check user details and try again."
             };
-            return new ResponseModel { Status = "Success", Message = "User created succesfully!" };
+
+            // Assign default role "Library User" to the new user
+            var roleResult = await AssignToRoleAsync(user.UserName, "Library User");
+            if (roleResult.Status != "Success")
+            {
+                return new AuthResponse
+                {
+                    Status = "Error",
+                    Message = "User created but failed to assign default role."
+                };
+            }
+
+            return new AuthResponse { Status = "Success", Message = "User created succesfully!" };
         }
 
         //Login user
-        public async Task<ResponseModel> LoginAsync(LoginModel model)
+        public async Task<AuthResponse> LoginAsync(LoginModel model)
         {
             var user = await _userManager.FindByNameAsync(model.Username);
             if (user != null && await _userManager.CheckPasswordAsync(user, model.Password))
@@ -72,7 +89,7 @@ namespace Assignment5.Application.Services
                 var token = new JwtSecurityToken(
                     issuer: _configuration["JWT:Issuer"],
                     audience: _configuration["JWT:Audience"],
-                    expires: DateTime.Now.AddHours(3),
+                    expires: DateTime.Now.AddDays(3),
                     claims: authClaims,
                     signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256));
 
@@ -80,29 +97,30 @@ namespace Assignment5.Application.Services
                 user.RefreshToken = refreshToken;
                 await _userManager.UpdateAsync(user);
 
-                return new ResponseModel
+                return new AuthResponse
                 {
                     Token = new JwtSecurityTokenHandler().WriteToken(token),
-                    ExpiredOn = token.ValidTo,
+                    TokenExpiresOn = token.ValidTo,
                     Message = "User successfully login!",
+                    User = user,
                     RefreshToken = refreshToken,
                     Roles = userRoles.ToList(),
                     Status = "Success"
                 };
             }
-            return new ResponseModel { Status = "Error", Message = "Password Not valid!" };
+            return new AuthResponse { Status = "Error", Message = "Password Not valid!" };
 
         }
         // Create Role
-        public async Task<ResponseModel> CreateRoleAsync(string rolename)
+        public async Task<AuthResponse> CreateRoleAsync(string rolename)
         {
             if (!await _roleManager.RoleExistsAsync(rolename))
                 await _roleManager.CreateAsync(new IdentityRole(rolename));
-            return new ResponseModel { Status = "Success", Message = "Role Created successfully!" };
+            return new AuthResponse { Status = "Success", Message = "Role Created successfully!" };
         }
 
         // Assign user to role that already created before
-        public async Task<ResponseModel> AssignToRoleAsync(string userName, string rolename)
+        public async Task<AuthResponse> AssignToRoleAsync(string userName, string rolename)
         {
             var user = await _userManager.FindByNameAsync(userName);
 
@@ -110,7 +128,7 @@ namespace Assignment5.Application.Services
             {
                 await _userManager.AddToRoleAsync(user, rolename);
             }
-            return new ResponseModel { Status = "Success", Message = "User created succesfully!" };
+            return new AuthResponse { Status = "Success", Message = "User created succesfully!" };
         }
 
         public string GenerateRefreshToken()
@@ -123,12 +141,12 @@ namespace Assignment5.Application.Services
             }
         }
 
-        public async Task<ResponseModel> LogoutAsync(string username)
+        public async Task<AuthResponse> LogoutAsync(string username)
         {
             var user = await _userManager.FindByNameAsync(username);
             if (user == null)
             {
-                return new ResponseModel { Status = "Error", Message = "User not found!" };
+                return new AuthResponse { Status = "Error", Message = "User not found!" };
             }
 
             // Invalidate the user's refresh token
@@ -136,10 +154,11 @@ namespace Assignment5.Application.Services
             var result = await _userManager.UpdateAsync(user);
             if (result.Succeeded)
             {
-                return new ResponseModel { Status = "Success", Message = "User successfully logged out!" };
+                return new AuthResponse { Status = "Success", Message = "User successfully logged out!" };
             }
 
-            return new ResponseModel { Status = "Error", Message = "Logout failed! Please try again." };
+            return new AuthResponse { Status = "Error", Message = "Logout failed! Please try again." };
         }
+
     }
 }

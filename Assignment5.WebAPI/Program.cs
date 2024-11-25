@@ -1,11 +1,23 @@
 using Asp.Versioning;
 using Assignment5.Persistence;
+using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builder =>
+        {
+            builder.WithOrigins("http://localhost:5173")
+                   .AllowAnyMethod()
+                   .AllowAnyHeader()
+                   .AllowCredentials();
+        });
+});
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -80,6 +92,12 @@ builder.Services.AddApiVersioning(option =>
 // Panggil ConfigurePersistence
 builder.Services.ConfigurePersistence(builder.Configuration);
 
+builder.Services.AddCookiePolicy(options =>
+{
+    options.HttpOnly = HttpOnlyPolicy.Always;
+    options.Secure = CookieSecurePolicy.Always;
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -96,6 +114,8 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Assignment 5 Library Management System V1");
     });
 }
+
+app.UseCors("AllowAllOrigins");
 
 app.UseHttpsRedirection();
 

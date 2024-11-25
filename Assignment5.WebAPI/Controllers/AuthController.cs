@@ -1,5 +1,7 @@
 ﻿using Assignment5.Application.DTOs.Account;
 using Assignment5.Application.Interfaces.IService;
+using Assignment6.Application.Interfaces.IService;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,7 +29,7 @@ namespace Assignment5.WebAPI.Controllers
 
             if (result.Status == "Error")
             {
-                return BadRequest(result.Message);
+                return BadRequest(new AuthResponse { Status = "Error", Message = result.Message });
             }
 
             return Ok(result);
@@ -45,12 +47,26 @@ namespace Assignment5.WebAPI.Controllers
             var result = await _authService.LoginAsync(model);
 
             if (result.Status == "Error")
+                return Unauthorized();
 
-                return BadRequest(result.Message);
-
+            SetRefreshTokenCookie("AuthToken", result.Token, result.TokenExpiresOn);
+            SetRefreshTokenCookie("RefreshToken", result.RefreshToken, result.RefreshTokenExpiration);
             return Ok(result);
 
         }
+        private void SetRefreshTokenCookie(string tokenType, string? token, DateTime? expires)
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,  // Hanya dapat diakses oleh server
+                Secure = true,    // Hanya dikirim melalui HTTPS
+                SameSite = SameSiteMode.Strict, // Cegah serangan CSRF
+                Expires = DateTime.Now.AddDays(3) // Waktu kadaluarsa token
+            };
+
+            Response.Cookies.Append(tokenType, token, cookieOptions);
+        }
+
 
         [HttpPost("set-role")]
         public async Task<IActionResult> CreateRoleAsync(string rolename)
@@ -66,21 +82,36 @@ namespace Assignment5.WebAPI.Controllers
             return Ok(result);
         }
 
+        [Authorize]
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout([FromBody] LogoutModel model)
+        public async Task<IActionResult> Logout()
         {
-            if (string.IsNullOrEmpty(model.Username))
+            try
             {
-                return BadRequest(new ResponseModel { Status = "Error", Message = "Username is required!" });
+                // Hapus cookie
+                Response.Cookies.Delete("AuthToken", new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict
+                });
+
+                Response.Cookies.Delete("RefreshToken", new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict
+                });
+
+                return Ok("Logout successfully");
             }
-
-            var response = await _authService.LogoutAsync(model.Username);
-
-            if (response.Status == "Success")
+            catch (Exception ex)
             {
-                return Ok(response);
+                return StatusCode(500, "An error occurred during logout");
             }
-            return BadRequest(response);
         }
+
+
+
     }
 }
