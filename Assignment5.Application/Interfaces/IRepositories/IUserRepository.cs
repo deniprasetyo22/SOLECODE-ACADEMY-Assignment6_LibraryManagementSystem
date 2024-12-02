@@ -11,9 +11,9 @@ namespace Assignment5.Application.Interfaces.IRepositories
     public interface IUserRepository
     {
         Task<User> AddUser(User user);
-        Task<IEnumerable<User>> GetAllUsers(paginationDto pagination);
+        Task<IEnumerable<User>> GetAllUsers();
         Task<User> GetUserById(int userId);
-        Task<bool> UpdateUser(int userId, User user);
+        Task<bool> UpdateUser(User user);
         Task<bool> DeleteUser(int userId);
     }
 }

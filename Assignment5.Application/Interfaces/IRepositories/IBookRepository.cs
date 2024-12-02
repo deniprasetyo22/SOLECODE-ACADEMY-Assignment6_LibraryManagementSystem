@@ -11,10 +11,9 @@ namespace Assignment5.Application.Interfaces.IRepositories
     public interface IBookRepository
     {
         Task<Book> AddBook(Book book);
-        Task<IEnumerable<BookDto>> GetAllBooks(paginationDto pagination);
-        Task<BookDto> GetBookById(int bookId);
-        Task<bool> UpdateBook(int bookId, Book book);
-        Task<bool> DeleteBook(int bookId, string reason);
-        Task<IEnumerable<BookDto>> Search(SearchDto query, paginationDto pagination);
+        Task<IEnumerable<Book>> GetAllBooks();
+        Task<Book> GetBookById(int bookId);
+        Task<bool> UpdateBook(Book book);
+        Task<bool> DeleteBook(int bookId);
     }
 }

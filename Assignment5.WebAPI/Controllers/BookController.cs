@@ -2,6 +2,7 @@
 using Assignment5.Application.DTOs;
 using Assignment5.Application.Interfaces.IService;
 using Assignment5.Domain.Models;
+using Assignment6.Application.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,7 @@ namespace Assignment5.WebAPI.Controllers
         ///
         ///     POST /api/Book
         ///     {
-        ///         "catergory":"Education",
+        ///         "category":"Education",
         ///         "title":"Biology",
         ///         "ISBN":"AAA11111",
         ///         "publisher":"Gramedia",
@@ -58,16 +59,16 @@ namespace Assignment5.WebAPI.Controllers
                 return BadRequest("Invalid input data. Please check the book details.");
             }
 
-            var addedBook = await _bookService.AddBook(book);
-
-            if(addedBook == null)
+            try
             {
-                return BadRequest("A book with the same ISBN or Title already exists.");
+                var addedBook = await _bookService.AddBook(book);
+                return Ok(new { Message = "Book added successfully.", Book = addedBook });
             }
-
-            return Ok(new { Message = "Book added successfully.", Book = addedBook });
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
-
 
         /// <summary>
         /// Retrieves a list of all books in the system.
@@ -81,12 +82,19 @@ namespace Assignment5.WebAPI.Controllers
         /// </remarks>
         /// <returns>A list of books.</returns>
         [Authorize(Roles = "Library Manager, Librarian, Library User")]
-        [HttpGet]
+        [HttpGet("noPages")]
         [MapToApiVersion("1.0")]
-        public async Task<ActionResult<IEnumerable<Book>>> GetAllBooks([FromQuery] paginationDto pagination)
+        public async Task<IActionResult> GetAllBooksNoPages()
         {
-            var books = await _bookService.GetAllBooks(pagination); 
-            return Ok(books);
+            try
+            {
+                var books = await _bookService.GetAllBooksNoPages();
+                return Ok(books);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -104,20 +112,26 @@ namespace Assignment5.WebAPI.Controllers
         [Authorize(Roles = "Library Manager, Librarian, Library User")]
         [HttpGet("{bookId}")]
         [MapToApiVersion("1.0")]
-        public async Task<ActionResult<Book>> GetBookById(int bookId)
+        public async Task<IActionResult> GetBookById(int bookId)
         {
             if (bookId <= 0)
             {
-                return BadRequest("Invalid ID. The ID must be greater than zero.");
+                return BadRequest(new { message = "Book ID must be greater than zero." });
             }
 
-            var book = await _bookService.GetBookById(bookId);
-            if (book == null)
+            try
             {
-                return NotFound($"Book with ID {bookId} was not found.");
+                var book = await _bookService.GetBookById(bookId);
+                if (book == null)
+                {
+                    return NotFound(new { message = $"Book with ID {bookId} not found." });
+                }
+                return Ok(book);
             }
-
-            return Ok(book);
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -133,8 +147,8 @@ namespace Assignment5.WebAPI.Controllers
         ///     {
         ///        "Title": "Updated Book Title",
         ///        "Author": "Updated Author",
-        ///        "PublicationYear": 1925
-        ///        "ISBN": "9780743273565",
+        ///        "PublicationYear": 1925,
+        ///        "ISBN": "9780743273565"
         ///     }
         /// </remarks>
         /// <param name="bookId">The ID of the book to be updated.</param>
@@ -147,16 +161,22 @@ namespace Assignment5.WebAPI.Controllers
         {
             if (book == null)
             {
-                return BadRequest("Invalid input data. Please check the book details.");
+                return BadRequest(new { message = "Invalid input data. Please check the book details." });
             }
 
-            var success = await _bookService.UpdateBook(bookId, book);
-            if (!success)
+            try
             {
-                return BadRequest("Unable to update book. Title or ISBN might already exist.");
+                var success = await _bookService.UpdateBook(bookId, book);
+                if (!success)
+                {
+                    return BadRequest(new { message = "Failed to update the book. Please check the details." });
+                }
+                return Ok(new { message = "Book updated successfully." });
             }
-
-            return Ok("Book updated successfully.");
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         /// <summary>
@@ -174,21 +194,21 @@ namespace Assignment5.WebAPI.Controllers
         [Authorize(Roles = "Library Manager")]
         [HttpDelete("{bookId}")]
         [MapToApiVersion("1.0")]
-        public async Task<IActionResult> DeleteBook(int bookId,[FromBody] string reason)
+        public async Task<IActionResult> DeleteBook(int bookId)
         {
-            // Memeriksa apakah reason adalah null atau kosong
-            if (string.IsNullOrEmpty(reason))
+            try
             {
-                return BadRequest("The reason should not be empty.");
+                var success = await _bookService.RemoveBook(bookId);
+                if (!success)
+                {
+                    return NotFound(new { message = $"Book with ID {bookId} not found." });
+                }
+                return Ok(new { message = "Book deleted successfully." });
             }
-
-            var success = await _bookService.DeleteBook(bookId, reason);
-            if (!success)
+            catch (Exception ex)
             {
-                return NotFound("Book not found.");
+                return BadRequest(new { message = ex.Message });
             }
-
-            return Ok("Book deleted successfully.");
         }
 
         /// <summary>
@@ -207,13 +227,17 @@ namespace Assignment5.WebAPI.Controllers
         [Authorize(Roles = "Library Manager, Librarian, Library User")]
         [HttpGet("search")]
         [MapToApiVersion("1.0")]
-        public async Task<IActionResult> Search([FromQuery] SearchDto query, [FromQuery] paginationDto pagination)
+        public async Task<IActionResult> SearchBooks([FromQuery] QueryObject query)
         {
-            var search = await _bookService.Search(query, pagination);
-
-            var searchDto = search.Select(a => a.ToString()).ToList();
-
-            return Ok(search);
+            try
+            {
+                var result = await _bookService.SearchBooksAsync(query);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
     }
 }
